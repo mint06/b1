@@ -5,114 +5,55 @@ from discord import app_commands
 
 from myserver import server_on
 
-bot = commands.Bot(command_prefix='!', intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 
 
-# //////////////////// Bot Event /////////////////////////
-# คำสั่ง bot พร้อมใช้งานแล้ว
+# 🔒 รายชื่อ channel ที่จะ "ล็อก" ไม่ให้พิมพ์ (ใส่เป็นชื่อหรือ ID ก็ได้)
+locked_channels = ["ล็อกแชท", "secret-channel"]  # หรือใส่เป็น ["123456789012345678"]
+
 @bot.event
 async def on_ready():
-    print("Bot Online!")
-    print("555")
-    synced = await bot.tree.sync()
-    print(f"{len(synced)} command(s)")
+    print(f'บอท {bot.user} พร้อมใช้งานแล้ว!')
 
-
-
-
-# แจ้งคนเข้า -ออกเซิฟเวอร์
-
-@bot.event
-async def on_member_join(member):
-    channel = bot.get_channel(1140633489520205934) # IDห้อง
-    text = f"Welcome to the server, {member.mention}!"
-
-    emmbed = discord.Embed(title = 'Welcome to the server!',
-                           description = text,
-                           color = 0x66FFFF)
-
-    await channel.send(text) # ส่งข้อความไปที่ห้องนี้
-    await channel.send(embed = emmbed)  # ส่ง Embed ไปที่ห้องนี้
-    await member.send(text) # ส่งข้อความไปที่แชทส่วนตัวของ member
-
-
-@bot.event
-async def on_member_remove(member):
-    channel = bot.get_channel(1140633489520205934)  # IDห้อง
-    text = f"{member.name} has left the server!"
-    await channel.send(text)  # ส่งข้อความไปที่ห้องนี้
-
-
-
-# คำสั่ง chatbot
+# ✅ ระบบล็อกแชท (ลบข้อความทันที)
 @bot.event
 async def on_message(message):
-    mes = message.content # ดึงข้อความที่ถูกส่งมา
-    if mes == 'hello':
-        await message.channel.send("Hello It's me") # ส่งกลับไปที่ห้องนั่น
-
-    elif mes == 'hi bot':
-        await message.channel.send("Hello, " + str(message.author.name))
-
+    if message.channel.name in locked_channels and not message.author.bot:
+        await message.delete()
+        print(f"ลบข้อความจาก {message.author} ในห้อง {message.channel.name}")
+        return
     await bot.process_commands(message)
-    # ทำคำสั่ง event แล้วไปทำคำสั่ง bot command ต่อ
 
+# 🧹 ลบข้อความหลายข้อความ
+@bot.command()
+@commands.has_permissions(manage_messages=True)
+async def clear(ctx, amount: int):
+    if amount > 100:
+        await ctx.send("ลบได้สูงสุด 100 ข้อความต่อครั้งนะ")
+        return
+    deleted = await ctx.channel.purge(limit=amount + 1)  # +1 คือลบคำสั่ง !clear ด้วย
+    await ctx.send(f"🧹 ลบ {len(deleted)-1} ข้อความแล้ว", delete_after=3)
 
-
-
-# ///////////////////// Commands /////////////////////
-# กำหนดคำสั่งให้บอท
+# ✅ คำสั่งเพิ่ม/ลบห้องจากลิสต์ล็อก
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def lock(ctx):
+    channel = ctx.channel.name
+    if channel in locked_channels:
+        await ctx.send("ห้องนี้ถูกล็อกอยู่แล้ว 🔒")
+    else:
+        locked_channels.append(channel)
+        await ctx.send("ล็อกห้องนี้เรียบร้อยแล้ว 🔒")
 
 @bot.command()
-async def hello(ctx):
-    await ctx.send(f"hello {ctx.author.name}!")
-
-
-@bot.command()
-async def test(ctx, arg):
-    await ctx.send(arg)
-
-
-# Slash Commands
-@bot.tree.command(name='hellobot', description='Replies with Hello')
-async def hellocommand(interaction):
-    await interaction.response.send_message("Hello It's me BOT DISCORD")
-
-
-@bot.tree.command(name='name')
-@app_commands.describe(name = "What's your name?")
-async def namecommand(interaction, name : str):
-    await interaction.response.send_message(f"Hello {name}")
-
-
-# Embeds
-
-@bot.tree.command(name='help', description='Bot Commands')
-async def helpcommand(interaction):
-    emmbed = discord.Embed(title='Help Me! - Bot Commands',
-                           description='Bot Commands',
-                           color=0x66FFFF,
-                           timestamp= discord.utils.utcnow())
-
-
-    # ใส่ข้อมูล
-    emmbed.add_field(name='/hello1', value='Hello Commmand', inline=True)
-    emmbed.add_field(name='/hello2', value='Hello Commmand', inline=True)
-    emmbed.add_field(name='/hello3', value='Hello Commmand', inline=False)
-
-    emmbed.set_author(name='Author', url='https://www.youtube.com/@maoloop01/channels', icon_url='https://yt3.googleusercontent.com/0qFq3tGT6LVyfLtZc-WCXcV9YyEFQ0M9U5W8qDe36j2xBTN34CJ20dZYQHmBz6aXASmttHI=s900-c-k-c0x00ffffff-no-rj')
-
-    # ใส่รูปเล็ก-ใหญ่
-    emmbed.set_thumbnail(url='https://yt3.googleusercontent.com/0qFq3tGT6LVyfLtZc-WCXcV9YyEFQ0M9U5W8qDe36j2xBTN34CJ20dZYQHmBz6aXASmttHI=s900-c-k-c0x00ffffff-no-rj')
-    emmbed.set_image(url='https://i.ytimg.com/vi/KZRa9DQzUpQ/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLCfWDgiBYjFJtrUasd5yxmQZJG_cg')
-
-    # Footer เนื้อหาส่วนท้าย
-    emmbed.set_footer(text='Footer', icon_url='https://yt3.googleusercontent.com/0qFq3tGT6LVyfLtZc-WCXcV9YyEFQ0M9U5W8qDe36j2xBTN34CJ20dZYQHmBz6aXASmttHI=s900-c-k-c0x00ffffff-no-rj')
-
-    await interaction.response.send_message(embed = emmbed)
-
-
-server_on()
-
-bot.run(os.getenv('TOKEN'))
+@commands.has_permissions(administrator=True)
+async def unlock(ctx):
+    channel = ctx.channel.name
+    if channel in locked_channels:
+        locked_channels.remove(channel)
+        await ctx.send("ปลดล็อกห้องนี้เรียบร้อยแล้ว 🔓")
+    else:
+        await ctx.send("ห้องนี้ยังไม่ได้ถูกล็อกนะ")
+server_on()  # เรียกใช้ฟังก์ชัน server_on() เพื่อเริ่มเซิร์ฟเวอร์ Flask
+bot.run(os.getenv('TOKEN'))  # ใช้ Token จาก environment variable
